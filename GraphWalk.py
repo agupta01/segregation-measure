@@ -64,6 +64,3 @@ def line_is_unique(a, b):
         if line.intersects(line_to_check):
             return False
     return True
-    
-    
-    
