@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
 import time
+from scipy.stats import mode
 from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
-%matplotlib inline
+# %matplotlib inline
 from shapely import speedups
 speedups.enable()
 
@@ -14,42 +15,17 @@ tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D'],
 chain = []
 # lines formed by traversals
 lines = []
-tract_coords
-
+# tract_coords
+# 
 points = tract_coords.point.values
 # compute distance matrix (from a to b)
 distance_matrix = [[a.distance(b) for b in points] for a in points]
-distance_matrix
-# start at random point
-np.random.seed(90)
-len(points)
-n0 = np.random.randint(len(points))
-n0
-# generate traversal probabilities
-prob_of_advance = lambda a, b: (1 - (distance_matrix[a][b] / sum(distance_matrix[a])))/2 if a != b else 0  # a is origin, b is destination
-prob = [prob_of_advance(n0, i) for i in range(len(points))]
-prob
-choices = np.random.choice([0,1,2,3], size = 10000, p=prob)
-from scipy.stats import mode
-n1 = max(choices)
-
-# add new choice to chain
-chain.append(n0)
-chain.append(n1)
-
-# add new line to list of lines
-n0_coords = list(tract_coords.iloc[n0].point.coords)[0]
-n1_coords = list(tract_coords.iloc[n1].point.coords)[0]
-n1_coords
-lines.clear()
-line_is_unique(n0, n1)
-lines
-
-# check if given line crosses between existing line on chain
-line1 = LineString([(0, 0), (1, 1)])
-line2 = LineString([(1, 0), (0, 1)])
-print(line1.intersects(line2))
-
+# distance_matrix
+# # start at random point
+# np.random.seed(90)
+# len(points)
+# n0 = np.random.randint(len(points))
+# n0
 def line_is_unique(a, b):
     """
     checks if line between two nodes intersects any previous lines
@@ -60,7 +36,53 @@ def line_is_unique(a, b):
     a_coords = list(tract_coords.iloc[a].point.coords)[0]
     b_coords = list(tract_coords.iloc[b].point.coords)[0]
     line_to_check = LineString([a_coords, b_coords])
-    for line in lines:
+    for line in lines[:-1]:
         if line.intersects(line_to_check):
             return False
     return True
+
+def traverse(node, sample_size=1):
+    """
+    traverses from given node to next node of highest probability
+    (probabilities weighted inverse to distance)
+    :params: node - index of node in DF to search from
+    :returns: index of next node in DF
+    """
+    # filter DF to only nodes NOT in chain, plus given node
+    origin_dist = distance_matrix[node]
+    origin_dist = {i:origin_dist[i] for i in range(len(origin_dist)) 
+    if (tract_coords.iloc[i].tract_ID not in chain) and (i != node)}
+    phi = 1 / sum([max(list(origin_dist.values()))/d for d in origin_dist.values()])
+    prob = np.zeros(len(distance_matrix[node]))
+    for i in range(len(prob)):
+        if i in origin_dist.keys():
+            prob[i] = (max(list(origin_dist.values())) / origin_dist[i])*phi
+    choices = np.random.choice(tract_coords.index.values, size = sample_size, p=prob)
+    return mode(choices)[0][0]
+
+# traverse(n0)
+
+chain.clear()
+lines.clear()
+node = 0
+# np.random.randint(len(points))
+node
+chain.append(tract_coords.iloc[node].tract_ID)
+while (len(chain) < len(points)):
+    # traverse to next node
+    print("Current node:", tract_coords.iloc[node].tract_ID)
+    new_node = traverse(node)
+    
+    count = 0
+    while (line_is_unique(node, new_node) == False):
+        new_node = traverse(node)
+        count = count + 1
+        
+    print("New node found!:", tract_coords.iloc[new_node].tract_ID)
+    # add node and new line to data objects
+    chain.append(tract_coords.iloc[new_node].tract_ID)
+    lines.append(LineString([list(tract_coords.iloc[node].point.coords)[0],
+                            list(tract_coords.iloc[new_node].point.coords)[0]]))
+    # set next node as current node
+    print(chain, new_node)
+    node = new_node
