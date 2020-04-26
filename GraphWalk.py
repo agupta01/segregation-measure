@@ -85,7 +85,7 @@ while (len(chain) < len(points)):
     while (line_is_unique(node, new_node) == False):
         new_node = traverse(node)
         count = count + 1
-        
+    
     print("New node found!:", tract_coords.iloc[new_node].tract_ID)
     # add node and new line to data objects
     # chain.append(tract_coords.iloc[new_node].tract_ID)
