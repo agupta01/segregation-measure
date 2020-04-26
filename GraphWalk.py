@@ -1,6 +1,6 @@
 import numpy as np
+
 import pandas as pd
-import time
 from scipy.stats import mode
 from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
@@ -8,30 +8,30 @@ import matplotlib.pyplot as plt
 from shapely import speedups
 speedups.enable()
 
+MAX_LIMIT = 9999e10
+
 # dataframe containing points to traverse
 tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D'],
                             'point': [Point(1, 3), Point(2,1), Point(4, 3), Point(3, 5)]})
-# points in order of traversal
+points = tract_coords.point.values
+index_to_ID = {tract_coords.index.values[i]:tract_coords.tract_ID.values[i] for i in tract_coords.index}
+# tract_ID of points in order of traversal
 chain = []
 # lines formed by traversals
 lines = []
-# tract_coords
-# 
-points = tract_coords.point.values
 # compute distance matrix (from a to b)
 distance_matrix = [[a.distance(b) for b in points] for a in points]
-# distance_matrix
-# # start at random point
-# np.random.seed(90)
-# len(points)
-# n0 = np.random.randint(len(points))
-# n0
+
 def line_is_unique(a, b):
     """
-    checks if line between two nodes intersects any previous lines
-    :params: a - index of a node in DataFrame
-    b - index of b node in DataFrame
-    :returns: boolean value, true if line doesn't intersect anything
+    Checks if line between two nodes intersects any previous lines.
+    
+    Parameters:
+        a (int): index of a node in DataFrame
+        b (int): index of b node in DataFrame
+    
+    Returns:
+        boolean: true if line doesn't intersect anything, false if it does
     """
     a_coords = list(tract_coords.iloc[a].point.coords)[0]
     b_coords = list(tract_coords.iloc[b].point.coords)[0]
@@ -41,23 +41,31 @@ def line_is_unique(a, b):
             return False
     return True
 
-def traverse(node, sample_size=1):
+def traverse(node_idx, sample_size=1):
     """
-    traverses from given node to next node of highest probability
-    (probabilities weighted inverse to distance)
-    :params: node - index of node in DF to search from
-    :returns: index of next node in DF
+    Traverses from given node to next node of highest probability
+    (probabilities weighted inverse to distance).
+    
+    Parameters:
+        node_idx (int): index of node in DF to search from
+    
+    Returns:
+        int: index of next node in DF
     """
-    # filter DF to only nodes NOT in chain, plus given node
-    origin_dist = distance_matrix[node]
-    origin_dist = {i:origin_dist[i] for i in range(len(origin_dist)) 
-    if (tract_coords.iloc[i].tract_ID not in chain) and (i != node)}
-    phi = 1 / sum([max(list(origin_dist.values()))/d for d in origin_dist.values()])
-    prob = np.zeros(len(distance_matrix[node]))
-    for i in range(len(prob)):
-        if i in origin_dist.keys():
-            prob[i] = (max(list(origin_dist.values())) / origin_dist[i])*phi
-    choices = np.random.choice(tract_coords.index.values, size = sample_size, p=prob)
+    # add node to chain, since you know it has been traversed
+    chain.append(index_to_ID[node_idx])
+    # filter distance_matrix to row of source node, and only include untraversed destination nodes
+    # to filter, set traversed nodes to distance of MAX_LIMIT, so prob of moving to them next is so small it doesn't matter
+    row = [distance_matrix[node_idx][i] if (index_to_ID[i] not in chain) else MAX_LIMIT for i in range(len(distance_matrix[node_idx]))]
+    
+    # compute intermediate terms of calculation
+    max_d = max(row)
+    phi = 1 / sum([max_d / d for d in row])
+    
+    # assemble probability vector
+    prob_vector = np.array([(max_d/d)*phi for d in row])
+
+    choices = np.random.choice(tract_coords.index.values, size = sample_size, p=prob_vector)
     return mode(choices)[0][0]
 
 # traverse(n0)
@@ -80,7 +88,7 @@ while (len(chain) < len(points)):
         
     print("New node found!:", tract_coords.iloc[new_node].tract_ID)
     # add node and new line to data objects
-    chain.append(tract_coords.iloc[new_node].tract_ID)
+    # chain.append(tract_coords.iloc[new_node].tract_ID)
     lines.append(LineString([list(tract_coords.iloc[node].point.coords)[0],
                             list(tract_coords.iloc[new_node].point.coords)[0]]))
     # set next node as current node
