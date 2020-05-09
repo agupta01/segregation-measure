@@ -12,8 +12,9 @@ MAX_LIMIT = 1e32
 np.random.seed()
 
 # dataframe containing points to traverse
-tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-                            'point': [Point(1, 3), Point(2,1), Point(4, 3), Point(3, 5), Point(5, 6), Point(10, 11), Point(0, 9), Point(9, 0)]})
+tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
+                            'point': [Point(1, 3), Point(2,1), Point(4, 3), Point(3, 5), Point(5, 6), Point(10, 11), Point(0, 9), 
+                            Point(9, 0), Point(0, 1), Point(0, 0), Point(7, 3), Point(5, 10), Point(2, 8), Point(7, 8), Point(0, 10), Point(9, 5)]})
 points = tract_coords.point.values
 index_to_ID = {tract_coords.index.values[i]:tract_coords.tract_ID.values[i] for i in tract_coords.index}
 # tract_ID of points in order of traversal
@@ -42,7 +43,7 @@ def line_is_unique(a, b):
             return False
     return True
 
-def traverse(node_idx, blacklist=[], sample_size=10000):
+def traverse(node_idx, blacklist=[], sample_size=10):
     """
     Traverses from given node to next node of highest probability
     (probabilities weighted inverse to distance).
@@ -86,11 +87,10 @@ node = np.random.randint(0, len(points) - 1)
 node
 chain.append(index_to_ID[node])
 while (len(chain) < len(points)):
+    blacklist = []
     # traverse to next node
     print("Current node:", tract_coords.iloc[node].tract_ID)
     new_node = traverse(node)
-    
-    blacklist = []
     while (line_is_unique(node, new_node) == False):
         print(f"Line from {index_to_ID[node]} to {index_to_ID[new_node]} not unique!")
         blacklist.append(new_node)
@@ -111,7 +111,7 @@ while (len(chain) < len(points)):
                             list(tract_coords.iloc[new_node].point.coords)[0]]))
     # add node to chain, since you know it has been traversed
     chain.append(index_to_ID[new_node])
-    
+    blacklist.clear()
     # set next node as current node
     node = new_node
 
@@ -120,9 +120,10 @@ print([line.xy for line in lines])
 
 fig, ax = plt.subplots()
 for i in range(len(points)):
-    ax.scatter(points[i].x, points[i].y, label=tract_coords.tract_ID[i])
+    ax.scatter(points[i].x, points[i].y, alpha=0.6)
+    ax.text(points[i].x, points[i].y,tract_coords.tract_ID[i])
 for line in lines:
     x, y = line.xy
     ax.plot(x, y, color='grey', alpha=0.5, linewidth=1, solid_capstyle='round', zorder=2)
-ax.legend()
+# ax.legend()
 plt.show()
