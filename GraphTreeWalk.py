@@ -65,7 +65,6 @@ class ClusterTree:
             self.printPostorder(root.right)
 
 
-
 def assemble_tree():
     global tract_coords
     # create tree with root being list of all tract_IDs
@@ -77,10 +76,33 @@ def assemble_tree():
     return tree
 
 
+def merge(child_node_a, child_node_b):
+    """
+    Merges two nodes together, ensures sub-graphs are also merged.
+    Note that the nature of the graph generation ensures that there are no single-child sub-graphs
+    (all parents have 2 children).
+    Args:
+        child_node_a: first child node to merge
+        child_node_b: second child node to merge, sibling to child_node_a
+    """
+    '''
+    # pseudocode:
+    if (child_node_a.subgraph_merged and child_node_b.subgraph_merged):
+        merge a with b
+        set parent of a and b to subgraph_merged = True
+        return 0
+    else: # both child nodes not merged
+        if (not child_node_a.subgraph_merged):
+            merge(child_node_a.left, child_node_a.right)
+        if (not child_node_b.subgraph_merged):
+            merge(child_node_b.left, child_node_b.right)
+    '''
+
 def clustering(tree, tracts):
     global tract_coords
     if (len(tracts) < 3):
-        # create new Node with root.tracts
+        # TODO
+        # if 2 tracts, create line between them
         return 0
     else:
         # split into 2 groups using clustering
