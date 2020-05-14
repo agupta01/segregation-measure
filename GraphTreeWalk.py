@@ -10,6 +10,7 @@ class TreeNode:
         self.tracts = tracts
         self.left = None
         self.right = None
+        self.parent = None
 
 class ClusterTree:
     def __init__(self, all_tracts=None):
@@ -40,15 +41,19 @@ class ClusterTree:
             if (currNode.left == None and currNode.right == None):
                 if (tracts < currNode.tracts):
                     currNode.left = newNode
+                    newNode.parent = currNode
                     currNode = None
                 elif (tracts > currNode.tracts):
                     currNode.right = newNode
+                    newNode.parent = currNode
                     currNode = None
             elif (currNode.left == None):
                 currNode.left = newNode
+                newNode.parent = currNode
                 currNode = None
             elif (currNode.right == None):
                 currNode.right = newNode
+                newNode.parent = currNode
                 currNode = None
             else:
                 if (isSubset(tracts, currNode.left.tracts)):
@@ -86,6 +91,7 @@ def merge(child_node_a, child_node_b):
         child_node_b: second child node to merge, sibling to child_node_a
     """
     '''
+    NOTE: Use subgraph objsct!
     # pseudocode:
     if (child_node_a.subgraph_merged and child_node_b.subgraph_merged):
         merge a with b
