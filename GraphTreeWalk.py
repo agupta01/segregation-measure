@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import sklearn as sk
 import math
 from sklearn.cluster import KMeans
+from shapely.geometry import Point, LineString, MultiLineString
 
 class TreeNode:
     def __init__(self, tracts=None):
@@ -11,6 +12,11 @@ class TreeNode:
         self.left = None
         self.right = None
         self.parent = None
+        self.heads = []
+        # stores lines in subgraph once we begin merging
+        self.graph = []
+        # line that connects subgraph to another subgraph
+        self.connecting_line = None
 
 class ClusterTree:
     def __init__(self, all_tracts=None):
@@ -63,7 +69,6 @@ class ClusterTree:
 
     # A function to do postorder tree traversal
     def printPostorder(self, root):
-
         if root:
             print(root.tracts)
             self.printPostorder(root.left)
@@ -83,26 +88,61 @@ def assemble_tree():
 
 def merge(child_node_a, child_node_b):
     """
-    Merges two nodes together, ensures sub-graphs are also merged.
+    Merges two nodes together. Assume subgraphs are merged.
     Note that the nature of the graph generation ensures that there are no single-child sub-graphs
     (all parents have 2 children).
     Args:
         child_node_a: first child node to merge
         child_node_b: second child node to merge, sibling to child_node_a
     """
-    '''
-    NOTE: Use subgraph objsct!
-    # pseudocode:
-    if (child_node_a.subgraph_merged and child_node_b.subgraph_merged):
-        merge a with b
-        set parent of a and b to subgraph_merged = True
-        return 0
-    else: # both child nodes not merged
-        if (not child_node_a.subgraph_merged):
-            merge(child_node_a.left, child_node_a.right)
-        if (not child_node_b.subgraph_merged):
-            merge(child_node_b.left, child_node_b.right)
-    '''
+    # look at the heads of the two graphs, make the pairs that can be merged
+    # let a be a head from child a, b be a nofe from child b
+    merge_pairs = [(a, b) for a in child_node_a.heads for b in child_node_b.heads]
+
+    # evaluate pairs to see if they are "visible" to each other - i.e. if they
+    # don't cross over either node's existing lines
+    for p in merge_pairs:
+        # TODO: check all lines against line made by p
+        # TODO: if it intersects, remove from merge_pairs
+        pass
+
+    if (len(merge_pairs) == 0): # no "visible" connections, have to go back and redo merge children for both nodes
+        # first, need to remove old lines from children's left & right
+        for child in [child_node_a, child_node_b]:
+            child.left.graph.remove(child.left.connecting_line)
+            child.left.connecting_line = None
+            child.right.graph.remove(child.right.connecting_line)
+            child.right.connecting_line = None
+
+        merge(child_node_a.left, child_node_a.right)
+        merge(child_node_b.left, child_node_b.right)
+    else:
+        # copy lines and heads into parent, plus new line (randomly chosen from merge_pairs)
+        choice = merge_pairs[np.random.choice(range(len(merge_pairs)))]
+        connection = Line(choice[0], choice[1])
+        child_node_a.connection_line = connection
+        child_node_b.connection_line = connection
+        child_node_a.parent.graph = child_node_a.graph + child_node_b.graph
+        child_node_a.parent.graph.append(connection)
+        # heads for parent are the 2 nodes that weren't connected
+        child_node_a.parent.heads = [child_node_a.heads[1-choice[0]], child_node_b.heads[1-choice[1]]]
+    # return parent as TreeNode object
+    return child_node_a.parent # or child_node_b.parent, it really doesn't matter
+
+def merge_tree(self, root):
+    """
+    Main function for merge, runs it recursively.
+    Args:
+        root - root node of subtree
+    Returns:
+        TreeNode object, with lines and head/tail listed out inside
+        None, if graph is blank/only has root node
+    """
+    if root.left and root.right:
+        merge(merge_tree(root.left), merge_tree(root.right))
+    else:
+        assert("Tree empty! No nodes to merge.")
+        return None
 
 def clustering(tree, tracts):
     global tract_coords
