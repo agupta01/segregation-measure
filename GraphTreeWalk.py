@@ -261,13 +261,13 @@ def main(i=None):
 
 
 if __name__ == '__main__':
-    volume = 1000
-    failed = 0
+    volume = 500
+    actual = volume
     print("Generating {} graphs and saving to 16-points-graphs/...".format(volume))
     for i in tqdm(range(volume)):
         try:
             main(i + 1)
         except RuntimeError:
-            failed += 1
+            actual -= 1
             pass
-    print("Generation finished, {}% accuracy".format(((volume - failed)/volume)*100))
+    print("Generation finished, {} generated, {}% accuracy.".format(actual, (actual/volume)*100))
