@@ -6,6 +6,7 @@ import math
 from sklearn.cluster import KMeans
 from shapely import ops
 from shapely.geometry import Point, LineString, MultiLineString
+from tqdm import tqdm
 
 
 class TreeNode:
@@ -20,10 +21,17 @@ class TreeNode:
         # line that connects subgraph to another subgraph
         self.connecting_line = None
 
-    def graph_node(self):
+    def graph_node(self, save=None):
+        """
+        Plots graph corresponding to node at time of invocation.
+        Args:
+            save: (optional) filepath to save graph image to, if desired
+
+        Returns:
+            None
+        """
         global tract_coords
         fig, ax = plt.subplots()
-        plt.title(str(self.tracts))
         ax.scatter(tract_coords.X, tract_coords.Y, alpha=0.6)
         for i in range(len(self.tracts)):
             ax.text(tract_coords.X[i], tract_coords.Y[i], tract_coords.tract_ID[i])
@@ -31,7 +39,10 @@ class TreeNode:
             x, y = line.xy
             ax.plot(x, y, color='grey', alpha=0.5, linewidth=1, solid_capstyle='round', zorder=2)
         # ax.legend()
-        plt.show()
+        if save != None:
+            plt.savefig(save)
+        # plt.show()
+        plt.close()
 
 
 class ClusterTree:
@@ -145,13 +156,12 @@ def merge(child_node_a, child_node_b):
 
     if (len(merge_pairs) == 0):  # no "visible" connections, have to go back and redo merge children for both nodes
         # first, need to remove old lines from children's left & right
-        print("Trapped!")
         for child in [child_node_a, child_node_b]:
             # child.left.graph.remove(child.left.connecting_line)
             child.left.connecting_line = None
             # child.right.graph.remove(child.right.connecting_line)
             child.right.connecting_line = None
-
+        raise RuntimeError("Trapped case reached!")
         merge(child_node_a.left, child_node_a.right)
         merge(child_node_b.left, child_node_b.right)
     else:
@@ -241,13 +251,21 @@ tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'
                              'Y': [3, 1, 3, 5, 6, 11, 9, 0, 1, 0, 3, 10, 8, 8, 10, 5]})
 
 
-def main():
+def main(i=None):
+    pd.set_option('mode.chained_assignment', None)
     cluster_tree = assemble_tree()
-    cluster_tree.printPostorder(cluster_tree.root)
     rootNode = merge_tree(cluster_tree.root)
-    print(rootNode.graph)
-    rootNode.graph_node()
+    rootNode.graph_node("./16-points-graphs/graph{}.png".format(i))
 
 
 if __name__ == '__main__':
-    main()
+    volume = 1000
+    failed = 0
+    print("Generating {} graphs and saving to 16-points-graphs/...".format(volume))
+    for i in tqdm(range(volume)):
+        try:
+            main(i + 1)
+        except RuntimeError:
+            failed += 1
+            pass
+    print("Generation finished, {}% accuracy".format(((volume - failed)/volume)*100))
