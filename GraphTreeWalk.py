@@ -7,6 +7,8 @@ from sklearn.cluster import KMeans
 from shapely import ops
 from shapely.geometry import Point, LineString, MultiLineString
 from tqdm import tqdm
+from shapely import speedups
+speedups.enable()
 
 
 class TreeNode:
