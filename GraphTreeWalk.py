@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import sklearn as sk
 import math
 from sklearn.cluster import KMeans
+from shapely import ops
 from shapely.geometry import Point, LineString, MultiLineString
 
 
@@ -31,6 +32,7 @@ class TreeNode:
             ax.plot(x, y, color='grey', alpha=0.5, linewidth=1, solid_capstyle='round', zorder=2)
         # ax.legend()
         plt.show()
+
 
 class ClusterTree:
     def __init__(self, all_tracts=None):
@@ -120,33 +122,34 @@ def merge(child_node_a, child_node_b):
         child_node_b: second child node to merge, sibling to child_node_a
     """
     global tract_coords
-    print("Merging", child_node_a.tracts, child_node_b.tracts)
     # look at the heads of the two graphs, make the pairs that can be merged
     # let a be a head from child a, b be a nofe from child b
     merge_pairs = [(a, b) for a in child_node_a.heads for b in child_node_b.heads]
 
     # evaluate pairs to see if they are "visible" to each other - i.e. if they
     # don't cross over either node's existing lines
+    final_merge_pairs = []
     for p in merge_pairs:
         p0_coords = [tract_coords[tract_coords.tract_ID == p[0]].X.values[0],
                      tract_coords[tract_coords.tract_ID == p[0]].Y.values[0]]
         p1_coords = [tract_coords[tract_coords.tract_ID == p[1]].X.values[0],
                      tract_coords[tract_coords.tract_ID == p[1]].Y.values[0]]
         newLine = LineString([p0_coords, p1_coords])
-        visible = True
-        for line in child_node_a.graph + child_node_b.graph:
-            if line.intersects(newLine):
-                visible = False
-        if not visible:
-            merge_pairs.remove(p)
+        # construct ring using a.graph and b.graph and newLine, and see if it forms a ring
+        # if so, remove it from list of candidates
+        ring = MultiLineString(child_node_a.graph + child_node_b.graph + [newLine])
+        if ring.is_simple:
+            final_merge_pairs.append(p)
+
+    merge_pairs = [p for p in final_merge_pairs]
 
     if (len(merge_pairs) == 0):  # no "visible" connections, have to go back and redo merge children for both nodes
         # first, need to remove old lines from children's left & right
         print("Trapped!")
         for child in [child_node_a, child_node_b]:
-            child.left.graph.remove(child.left.connecting_line)
+            # child.left.graph.remove(child.left.connecting_line)
             child.left.connecting_line = None
-            child.right.graph.remove(child.right.connecting_line)
+            # child.right.graph.remove(child.right.connecting_line)
             child.right.connecting_line = None
 
         merge(child_node_a.left, child_node_a.right)
@@ -157,7 +160,7 @@ def merge(child_node_a, child_node_b):
             choice = merge_pairs[np.random.choice(range(len(merge_pairs)))]
         else:
             choice = merge_pairs[0]
-        print("For", child_node_a.tracts, "and", child_node_b.tracts, "choosing", choice)
+        # print("For", child_node_a.tracts, "and", child_node_b.tracts, "choosing", choice)
         source_coords = [tract_coords[tract_coords.tract_ID == choice[0]].X.values[0],
                          tract_coords[tract_coords.tract_ID == choice[0]].Y.values[0]]
         dest_coords = [tract_coords[tract_coords.tract_ID == choice[1]].X.values[0],
@@ -177,8 +180,8 @@ def merge(child_node_a, child_node_b):
         else:
             child_node_a.parent.heads.append(child_node_b.heads[1 - child_node_b.heads.index(choice[1])])
     # return parent as TreeNode object
-    print("Merged! Returning", child_node_a.parent.tracts, "/", child_node_b.parent.tracts)
-    child_node_a.parent.graph_node()
+    # print("Merged! Returning", child_node_a.parent.tracts, "/", child_node_b.parent.tracts)
+    # child_node_a.parent.graph_node()
     return child_node_a.parent  # or child_node_b.parent, it really doesn't matter
 
 
@@ -208,6 +211,7 @@ def merge_tree(root):
         # both children exist and have merged subtrees, or are leaves
         else:
             return merge(root.left, root.right)
+
 
 def clustering(tree, tracts):
     global tract_coords
