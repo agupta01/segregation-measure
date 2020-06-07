@@ -35,15 +35,15 @@ class TreeNode:
         global tract_coords
         fig, ax = plt.subplots()
         ax.scatter(tract_coords.X, tract_coords.Y, alpha=0.6)
-        for i in range(len(self.tracts)):
-            ax.text(tract_coords.X[i], tract_coords.Y[i], tract_coords.tract_ID[i])
+        # for i in range(len(self.tracts)):
+        #     ax.text(tract_coords.X[i], tract_coords.Y[i], tract_coords.tract_ID[i])
         for line in self.graph:
             x, y = line.xy
             ax.plot(x, y, color='grey', alpha=0.5, linewidth=1, solid_capstyle='round', zorder=2)
         # ax.legend()
         if save != None:
             plt.savefig(save)
-        # plt.show()
+        plt.show()
         plt.close()
 
 
@@ -193,7 +193,7 @@ def merge(child_node_a, child_node_b):
             child_node_a.parent.heads.append(child_node_b.heads[1 - child_node_b.heads.index(choice[1])])
     # return parent as TreeNode object
     # print("Merged! Returning", child_node_a.parent.tracts, "/", child_node_b.parent.tracts)
-    # child_node_a.parent.graph_node()
+    child_node_a.parent.graph_node()
     return child_node_a.parent  # or child_node_b.parent, it really doesn't matter
 
 
@@ -247,27 +247,29 @@ def clustering(tree, tracts):
         clustering(tree, list(group_b.tract_ID.values))
 
 
-tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-                                          'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
-                             'X': [1, 2, 4, 3, 5, 10, 0, 9, 0, 0, 7, 5, 2, 7, 0, 9],
-                             'Y': [3, 1, 3, 5, 6, 11, 9, 0, 1, 0, 3, 10, 8, 8, 10, 5]})
-
+# tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+#                                           'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
+#                              'X': [1, 2, 4, 3, 5, 10, 0, 9, 0, 0, 7, 5, 2, 7, 0, 9],
+#                              'Y': [3, 1, 3, 5, 6, 11, 9, 0, 1, 0, 3, 10, 8, 8, 10, 5]})
+tract_coords = pd.read_csv('graph_tests/normal_30.csv')
 
 def main(i=None):
+    print(tract_coords.head())
     pd.set_option('mode.chained_assignment', None)
     cluster_tree = assemble_tree()
     rootNode = merge_tree(cluster_tree.root)
-    rootNode.graph_node("./16-points-graphs/graph{}.png".format(i))
+    rootNode.graph_node()
 
 
 if __name__ == '__main__':
-    volume = 500
-    actual = volume
-    print("Generating {} graphs and saving to 16-points-graphs/...".format(volume))
-    for i in tqdm(range(volume)):
-        try:
-            main(i + 1)
-        except RuntimeError:
-            actual -= 1
-            pass
-    print("Generation finished, {} generated, {}% accuracy.".format(actual, (actual/volume)*100))
+    # volume = 500
+    # actual = volume
+    # print("Generating {} graphs and saving to 16-points-graphs/...".format(volume))
+    # for i in tqdm(range(volume)):
+    #     try:
+    #         main(i + 1)
+    #     except RuntimeError:
+    #         actual -= 1
+    #         pass
+    # print("Generation finished, {} generated, {}% accuracy.".format(actual, (actual/volume)*100))
+    main()
