@@ -126,7 +126,7 @@ def assemble_tree():
     return tree
 
 
-def merge(child_node_a, child_node_b):
+def merge(child_node_a, child_node_b, blacklist=[]):
     """
     Merges two nodes together. Assume subgraphs are merged.
     Note that the nature of the graph generation ensures that there are no single-child sub-graphs
@@ -161,19 +161,21 @@ def merge(child_node_a, child_node_b):
         # first, need to remove old lines from children's left & right
         # raise RuntimeError("Trapped case reached!")
         print("Backtracking!")
-        if not child_node_a.is_leaf:
+        if len(child_node_a.tract) > 3:
             child_node_a.graph = []
             child_node_a.heads = []
             child_node_a.left.connecting_line = None
             child_node_a.right.connecting_line = None
-            merge(child_node_a.left, child_node_a.right)
+            # TODO: re-merge, but blacklist current pair
+            merge(child_node_a.left, child_node_a.right, blacklist=blacklist.append(()))
         else:
             print('Child A is a leaf!')
-        if not child_node_b.is_leaf:
+        if len(child_node_a.tracts) > 3:
             child_node_b.graph = []
             child_node_b.heads = []
             child_node_b.left.connecting_line = None
             child_node_b.right.connecting_line = None
+            # TODO: re-merge, but blacklist current pair
             merge(child_node_b.left, child_node_b.right)
         else:
             print('Child B is a leaf!')
@@ -297,7 +299,6 @@ def main(i=None):
     # print(tract_coords.head())
     pd.set_option('mode.chained_assignment', None)
     cluster_tree = assemble_tree()
-    cluster_tree.printPostorder(cluster_tree.root)
     root_node = merge_tree(cluster_tree.root)
     root_node.graph_node()
     # print(root_node.heads)
