@@ -126,7 +126,7 @@ def assemble_tree():
     return tree
 
 
-def merge(child_node_a, child_node_b, blacklist=[]):
+def merge(child_node_a, child_node_b):
     """
     Merges two nodes together. Assume subgraphs are merged.
     Note that the nature of the graph generation ensures that there are no single-child sub-graphs
@@ -161,13 +161,13 @@ def merge(child_node_a, child_node_b, blacklist=[]):
         # first, need to remove old lines from children's left & right
         # raise RuntimeError("Trapped case reached!")
         print("Backtracking!")
-        if len(child_node_a.tract) > 3:
+        if len(child_node_a.tracts) > 3:
             child_node_a.graph = []
             child_node_a.heads = []
             child_node_a.left.connecting_line = None
             child_node_a.right.connecting_line = None
             # TODO: re-merge, but blacklist current pair
-            merge(child_node_a.left, child_node_a.right, blacklist=blacklist.append(()))
+            merge(child_node_a.left, child_node_a.right)
         else:
             print('Child A is a leaf!')
         if len(child_node_a.tracts) > 3:
@@ -288,11 +288,11 @@ def clustering(tree, tracts):
         clustering(tree, list(group_b.tract_ID.values))
 
 
-tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-                                          'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
-                             'X': [1, 2, 4, 3, 5, 10, 0, 9, 0, 0, 7, 5, 2, 7, 0, 9],
-                             'Y': [3, 1, 3, 5, 6, 11, 9, 0, 1, 0, 3, 10, 8, 8, 10, 5]})
-# tract_coords = pd.read_csv('graph_tests/normal_30.csv')
+# tract_coords = pd.DataFrame({'tract_ID': ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+#                                           'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
+#                              'X': [1, 2, 4, 3, 5, 10, 0, 9, 0, 0, 7, 5, 2, 7, 0, 9],
+#                              'Y': [3, 1, 3, 5, 6, 11, 9, 0, 1, 0, 3, 10, 8, 8, 10, 5]})
+tract_coords = pd.read_csv('graph_tests/gumbel_30.csv')
 
 
 def main(i=None):
