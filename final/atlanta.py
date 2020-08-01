@@ -168,7 +168,7 @@ is_valid = Validator([LowerBound(min_pop, min_pop(init_partition) % 50),
     LowerBound(mean_pop, mean_one_sd_down),
     WithinPercentRangeOfBounds(sd_pop, 25)])
 BURN_IN = 1000
-STEP_COUNT = 1000
+STEP_COUNT = 1000000
 CITY_NAME = 'Atlanta'
 chunk_chain = MarkovChain(proposal=propose_chunk_flip, 
                     constraints=is_valid,
