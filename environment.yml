@@ -4,6 +4,7 @@ channels:
   - defaults
 dependencies:
   - _libgcc_mutex=0.1
+  - astroid=2.4.2
   - attrs=19.3.0
   - backcall=0.2.0
   - blas=1.0
@@ -11,7 +12,7 @@ dependencies:
   - boost-cpp=1.72.0
   - brotlipy=0.7.0
   - bzip2=1.0.8
-  - ca-certificates=2020.6.20
+  - ca-certificates=2020.6.24
   - cairo=1.16.0
   - certifi=2020.6.20
   - cffi=1.14.0
@@ -48,6 +49,7 @@ dependencies:
   - ipython=7.15.0
   - ipython_genutils=0.2.0
   - ipywidgets=7.5.1
+  - isort=4.3.21
   - jedi=0.17.1
   - jinja2=2.11.2
   - joblib=0.15.1
@@ -61,6 +63,7 @@ dependencies:
   - jupyterlab_server=1.1.5
   - kealib=1.4.13
   - krb5=1.17.1
+  - lazy-object-proxy=1.4.3
   - ld_impl_linux-64=2.33.1
   - libcurl=7.69.1
   - libdap4=3.20.6
@@ -86,6 +89,7 @@ dependencies:
   - libxml2=2.9.10
   - lz4-c=1.9.2
   - markupsafe=1.1.1
+  - mccabe=0.6.1
   - mistune=0.8.4
   - mkl=2020.1
   - mkl-service=2.3.0
@@ -121,6 +125,7 @@ dependencies:
   - ptyprocess=0.6.0
   - pycparser=2.20
   - pygments=2.6.1
+  - pylint=2.5.3
   - pyopenssl=19.1.0
   - pyparsing=2.4.7
   - pyproj=2.6.1.post1
@@ -146,6 +151,7 @@ dependencies:
   - testpath=0.4.4
   - tiledb=1.7.7
   - tk=8.6.10
+  - toml=0.10.1
   - tornado=6.0.4
   - traitlets=4.3.3
   - tzcode=2020a
@@ -154,6 +160,7 @@ dependencies:
   - webencodings=0.5.1
   - wheel=0.34.2
   - widgetsnbextension=3.5.1
+  - wrapt=1.11.2
   - xerces-c=3.2.2
   - xorg-kbproto=1.0.7
   - xorg-libice=1.0.10
@@ -182,8 +189,10 @@ dependencies:
     - matplotlib==3.2.2
     - mercantile==1.1.5
     - pillow==7.2.0
+    - pyjwt==1.7.1
     - rasterio==1.1.5
     - seaborn==0.10.1
     - snuggs==1.4.7
     - tqdm==4.46.1
+    - twilio==6.44.1
 prefix: /home/arunavgupta/anaconda3/envs/segregation-measure
