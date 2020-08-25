@@ -1,9 +1,10 @@
-# FOR REPRODUCIBILITY
-from gerrychain.random import random
-
+import copy
 import os
 import sys
-from twilio.rest import Client
+import time
+from multiprocessing import Event, Manager, Process, Queue, cpu_count
+from operator import itemgetter
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -16,14 +17,10 @@ from gerrychain.accept import always_accept
 from gerrychain.constraints import (LowerBound, UpperBound, Validator,
                                     WithinPercentRangeOfBounds)
 from gerrychain.proposals import propose_chunk_flip, propose_random_flip, recom
-
+from gerrychain.random import random  # FOR REPRODUCIBILITY
 from gerrychain.updaters import Tally
 from tqdm import tqdm, trange
-import time
-import copy
-import os
-
-from multiprocessing import Manager, Process, Queue, Event, cpu_count
+from twilio.rest import Client
 
 # twilio setup, requires proper env variables to be set up (so it will text you when the chain is done)
 # account = os.environ['TWILIO_ACCT']
@@ -155,13 +152,26 @@ def chain_to_entropy(chainobj, blocks=None):
     return city_entropy(R, P)
 
 
-def plot_results(city_name, step_count, chunk_entropies=None, random_entropies=None):
+def save_results(city_name, step_count, chunk_entropies=None, random_entropies=None):
+    os.chdir("parallel")
+    # sort and convert lists of entropies
+    chunk_entropies.sort(), random_entropies.sort()
+    chunk_entropies = list(map(itemgetter(1), chunk_entropies))
+    random_entropies = list(map(itemgetter(1), random_entropies))
+
+    # save entropy lists
+    np.save(
+        f"./results/arrays/{city_name.lower()}_cf_{step_count}.npy", chunk_entropies)
+    np.save(
+        f"./results/arrays/{city_name.lower()}_rf_{step_count}.npy", random_entropies)
+
     plt.figure(figsize=(20, 10))
     plt.subplot(1, 2, 1)
     plt.xlabel("City-wide Entropy Score")
     plt.ylabel("Density")
     sns.kdeplot(chunk_entropies)
-    plt.scatter(chain_to_entropy(dict(init_partition.assignment), race_matrix), 0, c='r')
+    plt.scatter(chain_to_entropy(
+        dict(init_partition.assignment), race_matrix), 0, c='r')
 
     plt.subplot(1, 2, 2)
     plt.xlabel("Step in Markov Chain")
@@ -171,9 +181,9 @@ def plot_results(city_name, step_count, chunk_entropies=None, random_entropies=N
         dict(init_partition.assignment), race_matrix), step_count), c='r')
 
     plt.suptitle(
-        f"Chunk Flip Entropies for {city_name}, run for {step_count} steps", y=1.02)
+        f"Chunk Flip Entropies for {city_name}, burn-in for {(0.1)*step_count} steps", y=1)
     plt.tight_layout()
-    # plt.savefig(f"results/plots/{city_name.lower()}_cf_{step_count}.png")
+    plt.savefig(f"./results/plots/{city_name.lower()}_cf_{step_count}.png")
 
     # plot and save result plots
     plt.figure(figsize=(20, 10))
@@ -181,7 +191,8 @@ def plot_results(city_name, step_count, chunk_entropies=None, random_entropies=N
     plt.xlabel("City-wide Entropy Score")
     plt.ylabel("Density")
     sns.kdeplot(random_entropies)
-    plt.scatter(chain_to_entropy(dict(init_partition.assignment), race_matrix), 0, c='r')
+    plt.scatter(chain_to_entropy(
+        dict(init_partition.assignment), race_matrix), 0, c='r')
 
     plt.subplot(1, 2, 2)
     plt.xlabel("Step in Markov Chain")
@@ -191,10 +202,10 @@ def plot_results(city_name, step_count, chunk_entropies=None, random_entropies=N
         dict(init_partition.assignment), race_matrix), step_count), c='r')
 
     plt.suptitle(
-        f"Random Flip Entropies for {city_name}, run for {step_count} steps", y=1.02)
+        f"Random Flip Entropies for {city_name}, burn-in for {(0.1)*step_count} steps", y=1)
     plt.tight_layout()
-    # plt.savefig(f"results/plots/{city_name.lower()}_rf_{step_count}.png")
-    plt.show()
+    plt.savefig(f"./results/plots/{city_name.lower()}_rf_{step_count}.png")
+    # plt.show()
 
 
 def generator(stop_event, partition_queue, _type, step_count=1000, burn_in=1000):
@@ -236,15 +247,21 @@ def generator(stop_event, partition_queue, _type, step_count=1000, burn_in=1000)
     _ = [next(chain)
          for i in trange(burn_in, desc=f"{_type} flip Burn-in", leave=True)]
     if _type == "chunk":
-        pbar = trange(step_count, desc=f"Generating {_type} flip", leave=True, position=0)
+        pbar = trange(
+            step_count, desc=f"Generating {_type} flip", leave=True, position=0)
     else:
-        pbar = trange(step_count, desc=f"Generating {_type} flip", leave=True, position=1)
+        pbar = trange(
+            step_count, desc=f"Generating {_type} flip", leave=True, position=1)
     for i in pbar:
-        partition_queue.put(dict(next(chain).assignment))
+        partition_queue.put((i, dict(next(chain).assignment)))
     stop_event.set()
+    # send a text when done
+    client.messages.create(to='+15103785524', from_='+12059272645',
+                           body=f"{_type.capitalize()} flip for {CITY_NAME} completed.")
     print(f"{_type.capitalize()} Generator: {stop_event.is_set()}")
 
-def worker(stop_event, partition_queue, entropy_list, timeout=1):
+
+def worker(stop_event, partition_queue, entropy_list, timeout=2):
     """
     Calculates entropy from available partitions in queue.
 
@@ -265,7 +282,8 @@ def worker(stop_event, partition_queue, entropy_list, timeout=1):
         else:
             try:
                 partition = partition_queue.get(block=True, timeout=timeout)
-                entropy_list.append(chain_to_entropy(partition, race_matrix))
+                entropy_list.append(
+                    (partition[0], chain_to_entropy(partition[1], race_matrix)))
             except:
                 if stop_event.is_set():
                     return
@@ -273,7 +291,8 @@ def worker(stop_event, partition_queue, entropy_list, timeout=1):
                     continue
     return
 
-def generate_entropies(_type, step_count, results, processes=4):
+
+def generate_entropies(_type, step_count, burn_in, results, processes=4):
     """
     Parameters
     ----------
@@ -281,6 +300,8 @@ def generate_entropies(_type, step_count, results, processes=4):
         either "chunk" or "random"
     step_count : int
         how long to run the chain for
+    burn_in : int
+        how long to run the chain without collecting data for
     results : dict
         key = type, value = list of entropies
     processes : int, Default 4
@@ -288,11 +309,13 @@ def generate_entropies(_type, step_count, results, processes=4):
     """
     manager = Manager()
     entropy_list = manager.list()
+    # each item in queue is a tuple (step in chain, dict of assignment)
     partition_queue = Queue(1)
     stop_event = Event()
 
     # define workers and chain generator
-    g = Process(target=generator, args=(stop_event, partition_queue, _type, step_count))
+    g = Process(target=generator, args=(
+        stop_event, partition_queue, _type, step_count, burn_in))
     workers = [Process(target=worker, args=(
         stop_event, partition_queue, entropy_list)) for _ in range(processes)]
 
@@ -307,6 +330,7 @@ def generate_entropies(_type, step_count, results, processes=4):
     except KeyboardInterrupt:
         _ = [p.kill() for p in workers]
         g.kill()
+
     print(f"Elapsed: {round(time.time() - begin, 3)} s")
     print(partition_queue.empty())
     print(entropy_list[-5:], len(entropy_list))
@@ -314,6 +338,11 @@ def generate_entropies(_type, step_count, results, processes=4):
 
 
 if __name__ == '__main__':
+    # twilio setup, requires proper env variables to be set up (so it will text you when the chain is done)
+    account = os.environ['TWILIO_ACCT']
+    auth = os.environ['TWILIO_AUTH']
+    client = Client(account, auth)
+
     manager = Manager()
     results = manager.dict()
 
@@ -339,12 +368,14 @@ if __name__ == '__main__':
                           UpperBound(mean_pop, mean_one_sd_up),
                           LowerBound(mean_pop, mean_one_sd_down),
                           WithinPercentRangeOfBounds(sd_pop, 25)])
-    BURN_IN = 1000
-    STEP_COUNT = 100000
+    STEP_COUNT = 1000000
+    BURN_IN = int(0.1 * STEP_COUNT)
     CITY_NAME = 'Atlanta'
-    
-    chunk = Process(target=generate_entropies, args=("chunk", STEP_COUNT, results, cpu_count()//2))
-    random = Process(target=generate_entropies, args=("random", STEP_COUNT, results, cpu_count()//2))
+
+    chunk = Process(target=generate_entropies, args=(
+        "chunk", STEP_COUNT, BURN_IN, results))
+    random = Process(target=generate_entropies, args=(
+        "random", STEP_COUNT, BURN_IN, results))
     chunk.start(), random.start()
     chunk.join(), random.join()
-    plot_results(CITY_NAME, STEP_COUNT, results['chunk'], results['random'])
+    save_results(CITY_NAME, STEP_COUNT, results['chunk'], results['random'])
