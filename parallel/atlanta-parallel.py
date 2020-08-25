@@ -243,15 +243,18 @@ def generator(stop_event, partition_queue, _type, step_count=1000, burn_in=1000)
     else:
         raise ValueError("Wrong chain type given. Give 'chunk' or 'random'.")
     iter(chain)
-    # burn-in
-    _ = [next(chain)
-         for i in trange(burn_in, desc=f"{_type} flip Burn-in", leave=True)]
     if _type == "chunk":
+        burn_bar = trange(burn_in, desc=f"{_type} flip Burn-in", leave=True, position=0)
         pbar = trange(
             step_count, desc=f"Generating {_type} flip", leave=True, position=0)
     else:
+        burn_bar = trange(burn_in, desc=f"{_type} flip Burn-in", leave=True, position=1)
         pbar = trange(
             step_count, desc=f"Generating {_type} flip", leave=True, position=1)
+    # burn-in
+    for _ in burn_bar:
+        next(chain)
+    
     for i in pbar:
         partition_queue.put((i, dict(next(chain).assignment)))
     stop_event.set()
