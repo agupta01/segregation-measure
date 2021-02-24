@@ -43,7 +43,6 @@ def load_data(city, state, st_FIPS):
     race_matrix : geopandas.GeoDataFrame
         rows are relevant, non-empty tracts, columns are racial groups.
     """
-    os.chdir("../")
     # Load race data
     FILEPATH = "./data/block_2010_data/nhgis0005_csv"
     relevant_cols = [
