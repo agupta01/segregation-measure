@@ -40,7 +40,7 @@ optional arguments:
                         processes across both
                         proposals
 ```
-NOTE: If you wish to simply try out the code, use the flag `-w 1` to minimize the number of threads you'll have to manually kill if things go wrong.
+NOTE: If you wish to simply try out the code, use the flag `-w 2` to minimize the number of threads you'll have to manually kill if things go wrong.
 If you are running to reproduce, use `-s 1000000` and make sure the random seed is set to `2020` (line 306 in `measure-parallel.py`). Note that this will take a VERY long amount of time, and thus it's only recommended to be run on a cloud instance or a very powerful machine.
 
 ## Acknowledgements
