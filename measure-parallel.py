@@ -1,3 +1,4 @@
+import argparse
 import os
 import time
 from multiprocessing import Event, Manager, Process, Queue
@@ -23,14 +24,11 @@ from gerrychain.updaters import Tally
 from tqdm import trange
 from twilio.rest import Client
 
-# twilio setup, requires proper env variables to be set up (so it will text you when the chain is done)
-# account = os.environ['TWILIO_ACCT']
-# auth = os.environ['TWILIO_AUTH']
-# client = Client(account, auth)
-
 
 def load_data(city, state, st_FIPS):
     """
+    Loads census data and HOLC representations from disk.
+
     Parameters
     ----------
     city : string
@@ -188,6 +186,7 @@ def city_entropy(R, P):
 def chain_to_entropy(chainobj, blocks=None):
     """
     Takes element in Markov Chain and computes entropy score using the partition map.
+
     Parameters
     ----------
     chainobj : dict
@@ -212,7 +211,8 @@ def chain_to_entropy(chainobj, blocks=None):
 
 
 def save_results(city_name, step_count, chunk_entropies=None, random_entropies=None):
-    os.chdir("parallel")
+    """Plots and saves results in graphical and array formats."""
+
     # sort and convert lists of entropies
     chunk_entropies.sort(), random_entropies.sort()
     chunk_entropies = list(map(itemgetter(1), chunk_entropies))
@@ -285,6 +285,8 @@ def save_results(city_name, step_count, chunk_entropies=None, random_entropies=N
 
 def generator(stop_event, partition_queue, _type, step_count=1000, burn_in=1000):
     """
+    Creates and runs generator for a proposal type.
+
     Parameters
     ----------
     _type : string
@@ -298,9 +300,11 @@ def generator(stop_event, partition_queue, _type, step_count=1000, burn_in=1000)
     partition_queue: multiprocessing.Queue
         structure that takes each partition as it is generated
     """
+    # FOR REPRODUCIBILITY
     from gerrychain.random import random
 
     random.seed(2020)
+
     init_partition = Partition(
         graph,
         assignment=race_matrix.to_dict()["partition"],
@@ -342,12 +346,12 @@ def generator(stop_event, partition_queue, _type, step_count=1000, burn_in=1000)
     for i in pbar:
         partition_queue.put((i, dict(next(chain).assignment)))
     stop_event.set()
-    # send a text when done
-    client.messages.create(
-        to="+15103785524",
-        from_="+12059272645",
-        body=f"{_type.capitalize()} flip for {CITY_NAME} completed.",
-    )
+    # # send a text when done (SEE FIELDS)
+    # client.messages.create(
+    #     to=<YOUR PHONE NUMBER>,
+    #     from_=<TWILIO SOUCE NUMBER>,
+    #     body=f"{_type.capitalize()} flip for {CITY_NAME} completed.",
+    # )
     print(f"{_type.capitalize()} Generator: {stop_event.is_set()}")
 
 
@@ -385,6 +389,8 @@ def worker(stop_event, partition_queue, entropy_list, timeout=2):
 
 def generate_entropies(_type, step_count, burn_in, results, processes=5):
     """
+    Generates entropies for given proposal type in a parallel manner.
+
     Parameters
     ----------
     _type : string
@@ -395,7 +401,7 @@ def generate_entropies(_type, step_count, burn_in, results, processes=5):
         how long to run the chain without collecting data for
     results : dict
         key = type, value = list of entropies
-    processes : int, Default 4
+    processes : int, Default 5
         number of processors to use
     """
     manager = Manager()
@@ -432,16 +438,40 @@ def generate_entropies(_type, step_count, burn_in, results, processes=5):
 
 
 if __name__ == "__main__":
-    # twilio setup, requires proper env variables to be set up (so it will text you when the chain is done)
-    account = os.environ["TWILIO_ACCT"]
-    auth = os.environ["TWILIO_AUTH"]
-    client = Client(account, auth)
+    # # twilio setup, requires proper env variables to be set up (so it will text you when the chain is done)
+    # account = os.environ["TWILIO_ACCT"]
+    # auth = os.environ["TWILIO_AUTH"]
+    # client = Client(account, auth)
 
-    STEP_COUNT = 1000000
+    # get hyperparams
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-s",
+        "--steps",
+        type=int,
+        help="number of steps for each markov chain",
+        default=100000,
+    )
+    parser.add_argument("city", type=str, help="city name, i.e. Atlanta")
+    parser.add_argument("state", type=str, help="state code, i.e. GA")
+    parser.add_argument(
+        "fips", help="state FIPS code (zero-padded on the end), i.e. 130"
+    )
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        help="total # of worker processes across both proposals",
+        default=10,
+    )
+    args = parser.parse_args()
+
+    STEP_COUNT = args.steps
     BURN_IN = int(0.1 * STEP_COUNT)
-    CITY_NAME = "Detroit"
-    STATE = "MI"
-    STATE_FIPS = "260"
+    CITY_NAME = args.city
+    STATE = args.state
+    STATE_FIPS = str(args.fips)
+    TOT_WORKERS = args.workers
 
     manager = Manager()
     results = manager.dict()
@@ -481,10 +511,12 @@ if __name__ == "__main__":
     )
 
     chunk = Process(
-        target=generate_entropies, args=("chunk", STEP_COUNT, BURN_IN, results)
+        target=generate_entropies,
+        args=("chunk", STEP_COUNT, BURN_IN, results, int(TOT_WORKERS / 2)),
     )
     random = Process(
-        target=generate_entropies, args=("random", STEP_COUNT, BURN_IN, results)
+        target=generate_entropies,
+        args=("random", STEP_COUNT, BURN_IN, results, int(TOT_WORKERS / 2)),
     )
     chunk.start(), random.start()
     chunk.join(), random.join()
