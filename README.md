@@ -1,6 +1,6 @@
 # segregation-measure
 
-This is the code for the project "Quantifying the Effects of Redlining on Racial Segregation in America's Urban Centers". Below you will find information on how to build the data product and reproduce the findings of the study.
+This is the code for the project "Coloring Inside the Lines: The Jagged Legacy of the HOLC Neighborhood Risk Maps". Below you will find information on how to build the data product and reproduce the findings of the study.
 
 ## Requirements
 
